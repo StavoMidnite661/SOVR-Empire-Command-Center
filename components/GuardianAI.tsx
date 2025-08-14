@@ -9,6 +9,7 @@ interface GuardianAIProps {
     messages: ChatMessage[];
     onCommand: (command: string, args: Record<string, any>) => void;
     isAutonomous: boolean;
+    isProcessing: boolean;
 }
 
 const AutonomousToggle: React.FC<{ isAutonomous: boolean; onCommand: (command: string, args: Record<string, any>) => void }> = ({ isAutonomous, onCommand }) => {
@@ -31,9 +32,8 @@ const AutonomousToggle: React.FC<{ isAutonomous: boolean; onCommand: (command: s
     );
 };
 
-export const GuardianAI: React.FC<GuardianAIProps> = ({ messages, onCommand, isAutonomous }) => {
+export const GuardianAI: React.FC<GuardianAIProps> = ({ messages, onCommand, isAutonomous, isProcessing }) => {
     const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     
     const scrollToBottom = () => {
@@ -41,26 +41,13 @@ export const GuardianAI: React.FC<GuardianAIProps> = ({ messages, onCommand, isA
     };
 
     useEffect(scrollToBottom, [messages]);
-    
-    // Listen for chat messages from Guardian to end loading state
-    useEffect(() => {
-        const lastMessage = messages[messages.length - 1];
-        if (isLoading && lastMessage && (lastMessage.author === ChatAuthor.GUARDIAN || lastMessage.author === ChatAuthor.SYSTEM_ACTION)) {
-            setIsLoading(false);
-        }
-    }, [messages, isLoading]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
-
-        const userMessageText = input;
+        if (!input.trim() || isProcessing) return;
         
-        // Send the command. The backend handles the rest, including cognitive steps.
-        onCommand(GuardianCommand.SEND_MESSAGE, { text: userMessageText });
-
+        onCommand(GuardianCommand.SEND_MESSAGE, { text: input });
         setInput('');
-        setIsLoading(true);
     };
     
     return (
@@ -89,7 +76,7 @@ export const GuardianAI: React.FC<GuardianAIProps> = ({ messages, onCommand, isA
                             </div>
                         )
                     })}
-                    {isLoading && (
+                    {isProcessing && messages[messages.length-1]?.author !== ChatAuthor.GUARDIAN && (
                         <div className="flex items-start gap-3">
                              <i className="fa-solid fa-shield-halved text-sov-cyan mt-1"></i>
                              <div className="max-w-xs lg:max-w-sm px-4 py-2 rounded-lg bg-sov-border/50 text-sov-text">
@@ -108,10 +95,10 @@ export const GuardianAI: React.FC<GuardianAIProps> = ({ messages, onCommand, isA
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Issue command to SOVR EMPIRE..."
-                        disabled={isLoading}
+                        disabled={isProcessing}
                         className="w-full bg-sov-bg border border-sov-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sov-cyan transition-all font-mono"
                     />
-                    <button type="submit" disabled={isLoading || !input.trim()} className="bg-sov-blue hover:bg-opacity-80 disabled:bg-sov-border disabled:cursor-not-allowed text-white px-4 py-2 rounded-md transition-all">
+                    <button type="submit" disabled={isProcessing || !input.trim()} className="bg-sov-blue hover:bg-opacity-80 disabled:bg-sov-border disabled:cursor-not-allowed text-white px-4 py-2 rounded-md transition-all">
                         <i className="fa-solid fa-arrow-right-to-bracket"></i>
                     </button>
                 </form>

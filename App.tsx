@@ -1,6 +1,5 @@
 
 
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Header } from './components/Header';
 import { NetworkTopology } from './components/NetworkTopology';
@@ -20,6 +19,7 @@ import type { LogEntry, SystemStatus, ServiceStatus, ChatMessage, TestResult, Sy
 import { SystemStatusEnum, TestName, CognitiveStep, ChatAuthor } from './types';
 import * as api from './services/apiService';
 import { produce } from 'https://esm.sh/immer@10.1.1';
+import { streamGuardianResponse } from './services/geminiService';
 
 const App: React.FC = () => {
     // Core State - Initialized empty, to be populated by the backend
@@ -42,6 +42,7 @@ const App: React.FC = () => {
     const [focusLevel, setFocusLevel] = useState(100);
     const [attunedDomain, setAttunedDomain] = useState<SystemDomain | null>(null);
     const [cognitiveProcess, setCognitiveProcess] = useState<CognitiveProcess | null>(null);
+    const [isGuardianProcessing, setIsGuardianProcessing] = useState(false);
     
     const guardianStream = useRef<(() => void) | null>(null);
 
@@ -49,21 +50,6 @@ const App: React.FC = () => {
         setLogEntries(prev => [{ ...entry, id: Date.now() + Math.random(), timestamp: new Date() }, ...prev.slice(0, 199)]);
     }, []);
 
-    const sendGuardianCommand = useCallback(async (command: string, args: Record<string, any> = {}) => {
-        if (command === 'SEND_MESSAGE') {
-             setChatMessages(prev => [
-                ...prev,
-                {
-                    id: Date.now(),
-                    author: ChatAuthor.USER,
-                    text: args.text,
-                    timestamp: new Date()
-                }
-            ]);
-        }
-        await api.sendGuardianCommand(command, args);
-    }, []);
-    
     const handleCognitiveStep = useCallback((step: CognitiveStep) => {
         setCognitiveProcess(produce((draft: CognitiveProcess | null) => {
             if (!draft || step === CognitiveStep.START) {
@@ -141,7 +127,72 @@ const App: React.FC = () => {
         }));
     }, []);
 
+    const sendGuardianCommand = useCallback(async (command: string, args: Record<string, any> = {}) => {
+        if (command === 'SEND_MESSAGE') {
+             const userMessageText = args.text;
 
+            // 1. Add user message to chat locally
+            setChatMessages(produce(draft => {
+                draft.push({
+                    id: Date.now(),
+                    author: ChatAuthor.USER,
+                    text: userMessageText,
+                    timestamp: new Date()
+                });
+            }));
+            
+            // 2. Set loading state & start cognitive process
+            setIsGuardianProcessing(true);
+            handleCognitiveStep(CognitiveStep.START);
+
+            // 3. Add a placeholder for the Guardian's streaming response
+            const guardianMessageId = Date.now() + 1; // Unique ID for the response
+            setChatMessages(produce(draft => {
+                draft.push({
+                    id: guardianMessageId,
+                    author: ChatAuthor.GUARDIAN,
+                    text: '',
+                    timestamp: new Date()
+                });
+            }));
+            
+            // 4. Call Gemini streaming service
+            streamGuardianResponse({
+                message: userMessageText,
+                onChunk: (chunk: string) => {
+                    handleCognitiveStep(CognitiveStep.EXECUTION);
+                    setChatMessages(produce(draft => {
+                        const guardianMessage = draft.find(m => m.id === guardianMessageId);
+                        if (guardianMessage) {
+                            guardianMessage.text += chunk;
+                        }
+                    }));
+                },
+                onComplete: () => {
+                    setIsGuardianProcessing(false);
+                    handleCognitiveStep(CognitiveStep.COMPLETE);
+                    addLogEntry({ level: 'INFO', message: 'Guardian AI response stream complete.' });
+                },
+                onError: (error: Error) => {
+                    setIsGuardianProcessing(false);
+                    handleCognitiveStep(CognitiveStep.ERROR);
+                    addLogEntry({ level: 'CRITICAL', message: `Guardian AI Error: ${error.message}` });
+                     setChatMessages(produce(draft => {
+                        const guardianMessage = draft.find(m => m.id === guardianMessageId);
+                        if (guardianMessage) {
+                             guardianMessage.author = ChatAuthor.SYSTEM_ACTION;
+                             guardianMessage.text = `Critical error processing command. See Event Log for details.`;
+                        }
+                    }));
+                }
+            });
+
+        } else {
+            // Handle other, non-chat commands via the mock API
+            await api.sendGuardianCommand(command, args);
+        }
+    }, [addLogEntry, handleCognitiveStep]);
+    
     // Centralized event handler for all incoming backend events
     const handleGuardianEvent = useCallback((event: any) => {
         const { type, payload } = event;
@@ -269,6 +320,7 @@ const App: React.FC = () => {
                         messages={chatMessages}
                         onCommand={sendGuardianCommand}
                         isAutonomous={isAutonomousMode}
+                        isProcessing={isGuardianProcessing}
                     />
                     <CognitiveVisualizer process={cognitiveProcess} />
                 </div>

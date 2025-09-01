@@ -1,22 +1,17 @@
 {
-  "name": "sovr-empire-command-&-control",
+  "name": "sovr-empire-c-and-c",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "description": "SOVR EMPIRE COMMAND & CONTROL",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
   },
   "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "recharts": "^3.1.0",
     "@google/genai": "^1.11.0"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "typescript": "^5.5.3",
+    "vercel": "^35.2.1"
   }
 }

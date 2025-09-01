@@ -297,6 +297,7 @@ const App: React.FC = () => {
                         systemStatus={systemStatus}
                         tests={testDefinitions}
                         testResults={testResults}
+                        services={services}
                     />
                     <SymbioticCore 
                         systemStatus={systemStatus}

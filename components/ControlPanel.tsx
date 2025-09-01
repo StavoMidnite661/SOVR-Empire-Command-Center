@@ -1,6 +1,7 @@
 
+
 import React from 'react';
-import type { SystemStatus, TestDefinition, TestResult } from '../types';
+import type { SystemStatus, TestDefinition, TestResult, ServiceStatus as Service, ServiceName } from '../types';
 import { SystemStatusEnum, TestName, GuardianCommand } from '../types';
 import { Panel } from './common/Panel';
 
@@ -8,6 +9,7 @@ interface ControlPanelProps {
     systemStatus: SystemStatus;
     tests: TestDefinition[];
     testResults: Partial<Record<TestName, TestResult>>;
+    services: Service[];
     onCommand: (command: string, args: Record<string, any>) => void;
 }
 
@@ -42,7 +44,7 @@ const TestButton: React.FC<{ name: TestName; status: 'PASS' | 'FAIL' | 'PENDING'
     );
 };
 
-export const ControlPanel: React.FC<ControlPanelProps> = ({ systemStatus, tests, testResults, onCommand }) => {
+export const ControlPanel: React.FC<ControlPanelProps> = ({ systemStatus, tests, testResults, services, onCommand }) => {
     const isEmergencyActive = systemStatus === SystemStatusEnum.EMERGENCY_STOP;
     
     const handleStatusChange = (status: SystemStatus) => {
@@ -51,6 +53,10 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ systemStatus, tests,
 
     const handleRunTest = (testName: TestName) => {
         onCommand(GuardianCommand.RUN_DIAGNOSTIC, { testName });
+    };
+
+    const handleRunServiceDiagnostic = (serviceName: ServiceName) => {
+        onCommand(GuardianCommand.RUN_DIAGNOSTIC, { serviceName });
     };
 
     return (
@@ -98,7 +104,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ systemStatus, tests,
                     </div>
                 </div>
                 <div>
-                    <h3 className="font-mono text-sov-text-secondary mb-2 text-sm">DIAGNOSTIC TESTS</h3>
+                    <h3 className="font-mono text-sov-text-secondary mb-2 text-sm">ENDPOINT HEALTH CHECKS</h3>
                     <div className="grid grid-cols-2 gap-2">
                         {tests.length > 0 ? tests.map(test => (
                             <TestButton 
@@ -109,10 +115,26 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({ systemStatus, tests,
                             />
                         )) : (
                             <div className="col-span-2 text-center text-sov-text-secondary font-mono text-xs py-4">
-                                No diagnostics loaded by AI.
+                                No tests loaded by AI.
                             </div>
                         )}
                     </div>
+                </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-sov-border/50">
+                <h3 className="font-mono text-sov-text-secondary mb-2 text-sm">SERVICE DIAGNOSTICS</h3>
+                <div className="grid grid-cols-2 gap-2">
+                    {services.map(service => (
+                        <button
+                            key={service.name}
+                            onClick={() => handleRunServiceDiagnostic(service.name)}
+                            disabled={systemStatus !== SystemStatusEnum.ACTIVE}
+                            className="flex items-center justify-between p-2 rounded-md border text-left text-sm transition-all duration-200 border-sov-border bg-transparent hover:bg-sov-border/50 text-sov-text-secondary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                        >
+                            <span className="font-mono">{service.name}</span>
+                            <i className="fa-solid fa-play ml-2"></i>
+                        </button>
+                    ))}
                 </div>
             </div>
         </Panel>

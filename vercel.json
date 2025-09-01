@@ -1,13 +1,3 @@
-
 {
-  "rewrites": [
-    {
-      "source": "/api/command",
-      "destination": "https://your-sovr-backend.example.com/api/command"
-    },
-    {
-      "source": "/api/events",
-      "destination": "https://your-sovr-backend.example.com/api/events"
-    }
-  ]
+
 }

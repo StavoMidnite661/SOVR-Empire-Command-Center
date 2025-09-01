@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Header } from './components/Header';
 import { NetworkTopology } from './components/NetworkTopology';
@@ -18,7 +19,7 @@ import { TabbedPanel } from './components/common/TabbedPanel';
 import type { LogEntry, SystemStatus, ServiceStatus, ChatMessage, TestResult, SystemDomain, TestDefinition, DefenseProtocol, CognitiveProcess, MetricDataPoint, TemporalEcho, ServiceName, ComplianceCheck } from './types';
 import { SystemStatusEnum, TestName, CognitiveStep, ChatAuthor } from './types';
 import * as api from './services/apiService';
-import { produce } from 'https://esm.sh/immer@10.1.1';
+import { produce } from 'immer';
 import { streamGuardianResponse } from './services/geminiService';
 
 const App: React.FC = () => {
